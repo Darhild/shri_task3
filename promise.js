@@ -7,10 +7,11 @@
     environment.MyPromise = MyPromise;    
 
     function MyPromise(executor) {
-        this.status = "pending";
-        this.result = undefined;
-        this.onSuccessCallback = [];
-        this.onErrorCallbacks = [];
+        if (typeof executor !== "function") throw new Error("MyPromise parameter must be a function");
+
+        this._status = "pending";
+        this._result = undefined;
+        this._query = [];
 
         this.then = function(callback){
             if (this.status === "pending") {
@@ -21,15 +22,12 @@
             }
         }
                    
-        function resolve(data) {
-            if(this.status !== "pending") return;     
+        function resolve(data, self) {
+            if(self.status !== "pending") return;     
 
-            this.status = "fulfilled";
-            this.result = data;    
-
-            for (let callback of this.successCallback) {
-                callback(data);
-            }
+            self.status = "fulfilled";
+            self.result = data;    
+            console.log(self.result);
         }
 
         this.catch = function(){
@@ -40,11 +38,13 @@
             this.onErrorCallbacks();
             this.status = "rejected";
             this.result = error;
-        } 
-        
-        console.log(executor.arguments);
-        executor(resolve, reject);
+        }        
+                   
+        executor(function(value) {resolve(value, this)}, function(value) {reject(value, this)});
+
     }
+
+
 
     MyPromise.prototype.resolve = function(data) {
         if(this.status !== "pending") return;     
@@ -58,6 +58,34 @@ const zzz = new MyPromise((success) => {
     setTimeout(() => success("done"), 5000);
 });
 
+console.log(this);
+
+
+const zzz1 = new MyPromise(function (resolve){
+    resolve(42)
+});
+
+console.log(zzz1);
+
+zzz1
+    .then(function (value) {
+        return value + 1
+    })
+    .then(function (value) {
+        console.log(value) // 43
+        return new Promise(function (resolve) { resolve(137) })
+    })
+    .then(function (value) {
+        console.log(value) // 137
+        throw new Error()
+    })
+    .then(
+        function () { console.log('Будет проигнорировано') },
+        function () { return 'ошибка обработана' }
+    )
+    .then(function (value) {
+        console.log(value) // "ошибка обработана"
+    })
 
 /*
 
